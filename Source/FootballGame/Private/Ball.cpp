@@ -4,6 +4,7 @@
 #include "Ball.h"
 
 #include "Stricker_cpp.h"
+#include "TeamManager.h"
 
 // Sets default values
 ABall::ABall()
@@ -17,6 +18,9 @@ ABall::ABall()
 	BallMesh->SetSimulatePhysics(true);
 	BallMesh->SetEnableGravity(true);
 	BallMesh->SetCollisionProfileName("PhysicsActor");
+	
+	ControllingStricker = nullptr;
+	ControllingTeam = nullptr;
 
 }
 
@@ -24,13 +28,30 @@ ABall::ABall()
 void ABall::BeginPlay()
 {
 	Super::BeginPlay();
-	
 }
 
 // Called every frame
 void ABall::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
+	Super::Tick(DeltaTime);;
+}
 
+void ABall::SetStricker(AStricker_cpp* Stricker)
+{
+	ControllingStricker = Stricker;
+
+	ATeamManager* Team = Stricker->Team;
+
+	if (ControllingTeam != Team) ControllingTeam = Team;
+}
+
+void ABall::RemoveStricker()
+{
+	ControllingStricker = nullptr;
+}
+
+void ABall::LoseBall()
+{
+	if (ControllingStricker == nullptr && ControllingTeam != nullptr) ControllingTeam = nullptr; 
 }
 

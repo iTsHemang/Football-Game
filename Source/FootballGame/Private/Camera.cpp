@@ -17,8 +17,8 @@ ACamera::ACamera()
 	//RootComponent =  CreateDefaultSubobject<USceneComponent>("Root");
 	UCameraComponent* Camera = CreateDefaultSubobject<UCameraComponent>("Camera");
 	SetRootComponent(Camera);
-	//Camera->SetupAttachment(RootComponent);
 	Camera->SetActive(true);
+	Camera->FieldOfView = 70.0f;
 }
 
 // Called when the game starts or when spawned
@@ -27,30 +27,33 @@ void ACamera::BeginPlay()
 	Super::BeginPlay();
 
 	CurrentLoc = GetActorLocation();
+	GetWorldTimerManager().SetTimerForNextTick(this, &ACamera::RotateCam);    
 }
 
 // Called every frame
 void ACamera::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	
+	MoveCamera(DeltaTime);
+}
 
-
+void ACamera::MoveCamera(float DeltaTime)
+{
 	if (!Ball) return;
 
 	FVector TargetLoc = Ball->GetActorLocation() + Offset;
 	CurrentLoc = FMath::VInterpTo(CurrentLoc, TargetLoc, DeltaTime, FolowSpeed);
-	CurrentLoc.Y = FMath::Clamp(CurrentLoc.Y, -600.0f, 600.0f);
-	CurrentLoc.X = FMath::Clamp(CurrentLoc.X, -900.0f, -750.0f);
+	CurrentLoc.Y = FMath::Clamp(CurrentLoc.Y, -800.0f, 800.0f);
+	CurrentLoc.X = Offset.X;
+	CurrentLoc.Z = Offset.Z;
 	SetActorLocation(CurrentLoc);
-
-	FVector BallOffset = Ball->GetActorLocation() - CurrentLoc;
-	float Yaw = BallOffset.Y * PanSpeed * 0.01f;
-	float Pitch = BallOffset.Z * PanSpeed * 0.01f;
-
-	FRotator Look = UKismetMathLibrary::FindLookAtRotation(CurrentLoc, Ball->GetActorLocation());
-	Look.Yaw += Yaw;
-	Look.Pitch += Pitch;
-
-	SetActorRotation(FMath::RInterpTo(GetActorRotation(), Look, DeltaTime, 2.0f));
 }
 
+void ACamera::RotateCam()
+{
+	if (!Ball) return;
+	
+	FRotator Look = UKismetMathLibrary::FindLookAtRotation(CurrentLoc, Ball->GetActorLocation());
+	SetActorRotation(Look);
+}

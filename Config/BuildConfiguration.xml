@@ -1,0 +1,5 @@
+<Configuration xmlns="https://www.unrealengine.com/BuildConfiguration">
+	<BuildConfiguration>
+		<MaxParallelActions>4</MaxParallelActions>
+	</BuildConfiguration>
+</Configuration>

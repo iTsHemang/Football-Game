@@ -21,17 +21,17 @@ public:
 	ABall* Ball;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera Folow Data")
-	FVector Offset = FVector(-800, 0, 600);
+	FVector Offset;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera Folow Data")
-	float FolowSpeed = 3.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera Folow Data")
-	float PanSpeed = 0.2f;
+	float FolowSpeed;
 	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	void MoveCamera(float DeltaTime);
+	void RotateCam();
 
 public:	
 	// Called every frame

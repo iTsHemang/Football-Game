@@ -3,14 +3,23 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GM_FirsttoXN.h"
+#include "GM_Main.h"
 #include "GameFramework/Actor.h"
+#include "NavigationSystem.h"
 #include "TeamManager.generated.h"
 
 class AStricker_cpp;
 class APlayerControllerCpp;
 class ABall;
 class AGoalPost;
+
+UENUM(BlueprintType)
+enum class ETeamState : uint8
+{
+	Attacking UMETA(DisplayName = "Attacking"),
+	Defending UMETA(DisplayName = "Defending"),
+	Lose UMETA(DisplayName = "Lose"),
+};
 
 UCLASS()
 class FOOTBALLGAME_API ATeamManager : public AActor
@@ -25,7 +34,13 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	AGM_FirsttoXN* GM;
+	AGM_Main* GM;
+	AGS_Football* GS;
+
+	float CalculateTimer = 0.0f;
+	ETeamState NewState = ETeamState::Lose;
+	UNavigationSystemV1* NavSys;
+
 
 public:	
 	// Called every frame
@@ -33,9 +48,15 @@ public:
 
 	UPROPERTY()
 	AGoalPost* GoalPost;
+	
+	UPROPERTY()
+	AStricker_cpp* Goali;
 
 	UPROPERTY()
-	AStricker_cpp* STR;
+	AStricker_cpp* PlayerStricker;
+
+	UPROPERTY()
+	AActor* CamActor;
 
 	UPROPERTY()
 	APlayerControllerCpp* PlayerController;
@@ -52,18 +73,37 @@ public:
 	UPROPERTY(EditAnywhere, Category="Spawn")
 	TSubclassOf<AGoalPost> GoalPostSpawn;
 
+	UPROPERTY()
+	AActor* OppGoalPost;
+
+	UPROPERTY()
+	ATeamManager* OppTM;
+
+	UPROPERTY()
+	ETeamState TeamState;
+	
 	AStricker_cpp* GetSwitchTarget(AStricker_cpp* Target);
 	
-	AStricker_cpp* GetPassTarget(AStricker_cpp* CurStricker);
+	AStricker_cpp* GetPassTarget(AStricker_cpp* CurStricker, FVector StickDirection);
+
+	void GetOppGoalPost();
 
 	bool IsLossing = false;
 
-	void SetControler(APlayerControllerCpp* PlrC);
-
-	void GoalConcede();
-	void SpawnGoalPost(FTransform SpawnLocation);
-	void SpawnStrickers(TArray<FTransform> StrickerSpawnData, AActor* Cam);
+	FVector FutureBallPos;
 	
-	void ResetPosition(TArray<FTransform> StrickerSpawnData, FTransform SpawnLocation, AActor* Cam);
-
+	void SetControler(APlayerControllerCpp* PlrC);
+	void SpawnGoalPost(FTransform SpawnLocation);
+	void SpawnStrickers(TArray<FTransform> StrickerSpawnData);
+	void PosessForward();
+	void GoalConcede();
+	void ResetPosition(TArray<FTransform> StrickerSpawnData, FTransform SpawnLocation);
+	bool HasPossassion();
+	void AutoSwitch(AStricker_cpp* Str);
+	
+	void ManageAIStricker();
+	TArray<FVector>  GenerateSpots(FVector BallPos);
+	float SpotScore(FVector S, AStricker_cpp* Stricker, TArray<FVector> AsignedSpots);
+	void GoaliSpot(FVector BallPos);
+	void MoveAi(AStricker_cpp* Stricker, FVector TargetPos);
 };

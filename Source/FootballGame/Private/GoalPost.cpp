@@ -6,6 +6,7 @@
 #include "Ball.h"
 #include "Components/BoxComponent.h"
 #include "TeamManager.h"
+#include "DrawDebugHelpers.h"
 
 // Sets default values
 AGoalPost::AGoalPost()
@@ -32,7 +33,6 @@ void AGoalPost::BeginPlay()
 void AGoalPost::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 void AGoalPost::SetTeamManager(ATeamManager* TM)

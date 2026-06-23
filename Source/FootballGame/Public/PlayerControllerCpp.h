@@ -3,6 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GM_Main.h"
+#include "Stricker_cpp.h"
 #include "GameFramework/PlayerController.h"
 #include "PlayerControllerCpp.generated.h"
 
@@ -21,6 +23,13 @@ class FOOTBALLGAME_API APlayerControllerCpp : public APlayerController
 	GENERATED_BODY()
 
 protected:
+
+	virtual void BeginPlay() override;
+	
+	virtual void SetupInputComponent() override;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	UInputMappingContext* DefaultMappingContext;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Input, meta = (AllowPrivateAccess = "true"))
 	TArray<UInputMappingContext*> InputMappingContexts;
@@ -52,7 +61,10 @@ protected:
 	UPROPERTY(BlueprintReadOnly)
 	ATeamManager* TeamManager;
 
+	AGS_Football* GS;
+
 	FRotator PlayerForward;
+	FVector stickdirection;
 	
     void Move(const FInputActionValue& Value);
     void SprintOn();
@@ -60,16 +72,20 @@ protected:
 	void Pass();
     void Through();
     void LobPass();
-	void Tackle();
+	void Tackle_Shoot();
 
 	void SwitchPlayer();
 
-	virtual void SetupInputComponent() override;
 
 public:
 
+	APlayerControllerCpp();
+	
 	UFUNCTION()
 	void SetTeamManager(ATeamManager* TM);
+
+	UFUNCTION()
+	void OnActionExicuted(AStricker_cpp* Target, AStricker_cpp* PrevStricker);
 
 	UPROPERTY()
 	AActor* CamActor;

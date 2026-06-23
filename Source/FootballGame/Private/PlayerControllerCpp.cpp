@@ -10,20 +10,38 @@
 #include "Stricker_cpp.h"
 #include "TeamManager.h"
 #include "InputActionValue.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Kismet/GameplayStatics.h"
 
+
+APlayerControllerCpp::APlayerControllerCpp()
+{
+	bAutoManageActiveCameraTarget = false;
+}
+
+void APlayerControllerCpp::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	FTimerHandle Timer;
+	GetWorldTimerManager().SetTimer(Timer, [this]()
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+		{
+			for (UInputMappingContext* CurrentContext : InputMappingContexts)
+			{
+				Subsystem->AddMappingContext(CurrentContext, 0);
+			}
+		}
+	}, 0.2f, false);
+
+	GS = Cast<AGS_Football>(GetWorld()->GetGameState());
+}
 
 void APlayerControllerCpp::SetupInputComponent()
 {
 	Super::SetupInputComponent();
-
-	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
-	{
-		for (UInputMappingContext* CurrentContext : InputMappingContexts)
-		{
-			Subsystem->AddMappingContext(CurrentContext, 0);
-		}
-	}
-
+	
 	if (UEnhancedInputComponent* EnhancedInput = Cast<UEnhancedInputComponent>(InputComponent))
 	{
 		EnhancedInput->BindAction(MoveAction, ETriggerEvent::Triggered, this, &APlayerControllerCpp::Move);
@@ -34,108 +52,138 @@ void APlayerControllerCpp::SetupInputComponent()
 		EnhancedInput->BindAction(ThroughAction, ETriggerEvent::Triggered, this , &APlayerControllerCpp::Through);
 		EnhancedInput->BindAction(PassAction, ETriggerEvent::Triggered, this, &APlayerControllerCpp::Pass);
 		EnhancedInput->BindAction(LobPassAction, ETriggerEvent::Triggered, this, &APlayerControllerCpp::LobPass);
+		EnhancedInput->BindAction(TackleAction, ETriggerEvent::Triggered, this, &APlayerControllerCpp::Tackle_Shoot);
 
 		EnhancedInput->BindAction(SwitchAction, ETriggerEvent::Triggered, this, &APlayerControllerCpp::SwitchPlayer);
 
-		EnhancedInput->BindAction(TackleAction, ETriggerEvent::Triggered, this, &APlayerControllerCpp::Tackle);
 	}
 		
 }
 
+
 void APlayerControllerCpp::SetTeamManager(ATeamManager* TM)
 {
 	TeamManager = TM;
-	TeamManager->SetControler(this);
+	TeamManager->SetControler(this);	
+}
+
+void APlayerControllerCpp::OnActionExicuted(AStricker_cpp* Target, AStricker_cpp* PrevStricker)
+{
+	if (!Target) return;
+
+	Possess(Target);
+	TeamManager->PlayerStricker = Target;
+	PrevStricker->SpawnDefaultController();
+	SetViewTargetWithBlend(CamActor, 0.0f);
+	Target->IsReciving=true;
+	
+	FTimerHandle ReceivingTimer;
+	GetWorldTimerManager().ClearTimer(ReceivingTimer);
+	GetWorldTimerManager().SetTimer(ReceivingTimer,
+		FTimerDelegate::CreateLambda([Target]()
+	{
+		if (Target)
+		{
+			Target->LoseBall();
+		}
+			
+	}), 0.5f, false);
 }
 
 void APlayerControllerCpp::Move(const FInputActionValue& Value)
 {
+	if (!GS->IsGameOn) return;
+	
+    stickdirection.X = Value.Get<FVector2D>().Y;
+	stickdirection.Y = Value.Get<FVector2D>().X;
 	if (AStricker_cpp* Stricker = Cast<AStricker_cpp>(GetPawn())) Stricker->Move(Value);
 	FVector2D MovementVector = Value.Get<FVector2D>();
 }
 
 void APlayerControllerCpp::SprintOn()
 {
+	if (!GS->IsGameOn) return;
+	
 	if (AStricker_cpp* Stricker = Cast<AStricker_cpp>(GetPawn())) Stricker->SprintOn();
 }
 
 void APlayerControllerCpp::SprintOff()
 {
+	if (!GS->IsGameOn) return;
+	
 	if (AStricker_cpp* Stricker = Cast<AStricker_cpp>(GetPawn())) Stricker->SprintOff();
 }
 
 void APlayerControllerCpp::Pass()
 {
+	if (!GS->IsGameOn) return;
+		
 	AStricker_cpp* CurStricker = Cast<AStricker_cpp>(GetPawn());
-	if (!CurStricker || !TeamManager) return;
-	
-	ABall* Ball = TeamManager->Ball;
+	if (!CurStricker) return;
 
-	AStricker_cpp* NextStricker = TeamManager->GetPassTarget(CurStricker);
-
-	if (NextStricker)
-	{
-		CurStricker->Pass(NextStricker);
-		NextStricker->IsReciving = true;
-		Possess(NextStricker);
-		SetViewTargetWithBlend(CamActor, 0.0f);
-	}
-
-	else
-	{
-		CurStricker->PassForward();
-	}
+	CurStricker->PassAction(stickdirection);
 }
 
 void APlayerControllerCpp::Through()
 {
-	if (AStricker_cpp* Stricker = Cast<AStricker_cpp>(GetPawn())) Stricker->Through();
+	if (!GS->IsGameOn) return;
+	
+	AStricker_cpp* CurStricker = Cast<AStricker_cpp>(GetPawn());
+	if (!CurStricker) return;
+
+	CurStricker->ThroughAction(stickdirection);
+	
 }
 
 void APlayerControllerCpp::LobPass()
 {
-	AStricker_cpp* CurStricker = Cast<AStricker_cpp>(GetPawn());
-	if (!CurStricker || !TeamManager) return;
+	if (!GS->IsGameOn) return;
 	
-	ABall* Ball = TeamManager->Ball;
+	AStricker_cpp* CurStricker = Cast<AStricker_cpp>(GetPawn());
+	if (!CurStricker) return;
 
-	AStricker_cpp* NextStricker = TeamManager->GetPassTarget(CurStricker);
+	CurStricker->LobPassAction(stickdirection);
+}
 
-	if (NextStricker)
+void APlayerControllerCpp::Tackle_Shoot()
+{
+	if (!GS->IsGameOn) return;
+	
+	if (TeamManager->HasPossassion())
 	{
-		CurStricker->LobPass(NextStricker);
-		NextStricker->IsReciving = true;
-		Possess(NextStricker);
-		SetViewTargetWithBlend(CamActor, 0.0f);
+		AStricker_cpp* CurStricker = Cast<AStricker_cpp>(GetPawn());
+		if (!CurStricker) return;
+
+		CurStricker->ShootAction(stickdirection);
 	}
 
 	else
 	{
-		CurStricker->LobPassForward();
+		AStricker_cpp* CurStricker = Cast<AStricker_cpp>(GetPawn());
+		CurStricker->Tackle();
 	}
 }
 
-void APlayerControllerCpp::Tackle()
+void APlayerControllerCpp::SwitchPlayer()
 {
-	AStricker_cpp* CurStricker = Cast<AStricker_cpp>(GetPawn());
-	CurStricker->Tackle();
-}
-
-	void APlayerControllerCpp::SwitchPlayer()
-{
-	if (!TeamManager) return;
+	if (!TeamManager || TeamManager->HasPossassion() || !GS->IsGameOn) return;
 
 	AStricker_cpp* CurStricker = Cast<AStricker_cpp>(GetPawn());
 	
-	if (!CurStricker->IsBallInControle)
+	if (CurStricker && !CurStricker->HasBall())
 	{
 		if (AStricker_cpp* NewStricker = TeamManager->GetSwitchTarget(CurStricker))
 		{
+			CurStricker->GetMesh()->GetAnimInstance()->StopAllMontages(0.0f);
 			Possess(NewStricker);
+			CurStricker->SpawnDefaultController();
 			SetViewTargetWithBlend(CamActor, 0.0f);
 		}
 	}
 }
+
+
+
 
 
 

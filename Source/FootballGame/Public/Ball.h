@@ -7,6 +7,7 @@
 #include "Ball.generated.h"
 
 class AStricker_cpp;
+class ATeamManager;
 
 UCLASS()
 class FOOTBALLGAME_API ABall : public AActor
@@ -22,6 +23,9 @@ public:
 
 	UPROPERTY()
 	AStricker_cpp* ControllingStricker;
+	
+	UPROPERTY()
+	ATeamManager* ControllingTeam;
 
 	bool IsControlled = false;
 
@@ -33,5 +37,8 @@ protected:
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-
+	
+	void SetStricker(AStricker_cpp* Stricker);
+	void RemoveStricker();
+	void LoseBall();
 };
