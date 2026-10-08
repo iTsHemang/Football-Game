@@ -37,7 +37,7 @@ Implemented player switching logic for controlling different players during game
 Implemented the main gameplay flow, including player and ball spawning, goals, match state, and restarting gameplay after a goal.
 
 ### Local Multiplayer
-Implemented a 2-player local multiplayer system, allowing two players to control separate football players simultaneously using independent input configurations.
+Implemented a 2-player local multiplayer system with independent player controllers and input handling, allowing both players to control their own footballer simultaneously.
 
 ## Source Code
 The complete Unreal Engine project and C++ source code are available in this repository.
